@@ -19,24 +19,25 @@ describe('ParseController', () => {
     expect(controller).toBeDefined();
   });
 
-  it('should error on invalid language code', () => {
-    expect(
-      async () => await controller.parseText('esp' as any, 'Hello there!'),
-    ).rejects.toThrow();
+  it('should error on invalid language code', async () => {
+    await expect(() =>
+      controller.parseText('esp' as any, 'Hello there!'),
+    ).rejects.toThrow('language code');
   });
 
-  it('should error on text missing', () => {
-    expect(
-      async () => await controller.parseText(LanguageCode.Chinese, undefined),
+  it('should error on text missing', async () => {
+    await expect(() =>
+      controller.parseText(LanguageCode.Chinese, undefined),
     ).rejects.toThrow('is required');
   });
 
-  it('should error on lang missing', () => {
-    expect(
-      async () => await controller.parseText(undefined, 'Hello, how are you?'),
+  it('should error on lang missing', async () => {
+    await expect(() =>
+      controller.parseText(undefined, 'Hello, how are you?'),
     ).rejects.toThrow('is required');
   });
 
+  jest.setTimeout(10000);
   it('should return proper response', () => {
     return controller
       .parseText(

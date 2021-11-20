@@ -25,6 +25,7 @@
     "@nestjs/core": "^8.0.0",
     "@nestjs/platform-express": "^8.0.0",
     "@types/node-fetch": "^2.5.12",
+    "dotenv": "^10.0.0",
     "node-fetch": "^2.6.6",
     "python-shell": "^3.0.1",
     "reflect-metadata": "^0.1.13",
@@ -69,6 +70,9 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "setupFiles": [
+      "<rootDir>/jest.init.ts"
+    ]
   }
 }
