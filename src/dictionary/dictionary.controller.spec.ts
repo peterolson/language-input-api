@@ -38,4 +38,15 @@ describe('DictionaryController', () => {
       controller.lookupWord(LanguageCode.English, 'fff' as any, 'tomorrow'),
     ).rejects.toThrow('language code');
   });
+
+  it('should find examples', async () => {
+    await expect(
+      controller.getExamples(
+        LanguageCode.English,
+        LanguageCode.Chinese,
+        'today',
+        '今天',
+      ),
+    ).resolves.toBeDefined();
+  });
 });

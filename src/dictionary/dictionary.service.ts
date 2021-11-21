@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import fetch from 'node-fetch';
 import { LanguageCode } from 'src/parse/parse.types';
-import { DictionaryLookup, DictionaryTranslation } from './dictionary.types';
+import {
+  DictionaryExample,
+  DictionaryLookup,
+  DictionaryTranslation,
+} from './dictionary.types';
 
 function getHeaders() {
   const subscriptionKey = process.env.AZURE_COGNITIVE_SERVICES_KEY;
@@ -58,5 +62,23 @@ export class DictionaryService {
     }
 
     return result;
+  }
+
+  async getExamples(
+    word: string,
+    translation: string,
+    from: LanguageCode,
+    to: LanguageCode,
+  ): Promise<DictionaryExample[]> {
+    const headers = getHeaders();
+    const response = await fetch(
+      `https://api.cognitive.microsofttranslator.com/dictionary/examples?api-version=3.0&from=${from}&to=${to}`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify([{ Text: word, Translation: translation }]),
+      },
+    ).then((res) => res.json());
+    return response[0]?.examples;
   }
 }

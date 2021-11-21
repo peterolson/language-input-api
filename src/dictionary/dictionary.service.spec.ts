@@ -32,4 +32,17 @@ describe('DictionaryService', () => {
         expect(response?.translations.length).toBeGreaterThan(0);
       });
   });
+
+  it('should find examples', () => {
+    return service
+      .getExamples(
+        'tomorrow',
+        'mañana',
+        LanguageCode.English,
+        LanguageCode.Spanish,
+      )
+      .then((response) => {
+        expect(response.length).toBeGreaterThan(0);
+      });
+  });
 });

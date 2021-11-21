@@ -10,7 +10,8 @@ export type DictionaryTranslation = {
   posTag: string;
   confidence: number;
   prefixWord: string;
-  backTranslations;
+  backTranslations: BackTranslation[];
+  examples?: DictionaryExample[];
 };
 
 export type BackTranslation = {
@@ -18,4 +19,13 @@ export type BackTranslation = {
   displayText: string;
   numExamples: number;
   frequencyCount: number;
+};
+
+export type DictionaryExample = {
+  sourcePrefix: string;
+  sourceTerm: string;
+  sourceSuffix: string;
+  targetPrefix: string;
+  targetTerm: string;
+  targetSuffix: string;
 };
