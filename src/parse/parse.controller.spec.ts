@@ -42,12 +42,10 @@ describe('ParseController', () => {
     return controller
       .parseText(
         LanguageCode.English,
-        "What is John Peter Smith doing today? I don't know.",
+        "What is John Peter Smith doing today?\n I don't know.",
       )
       .then((res) => {
-        expect(res?.tokens?.length).toBeGreaterThanOrEqual(10);
-        expect(res?.sents?.length).toBeGreaterThanOrEqual(2);
-        expect(res?.ents?.length).toBeGreaterThanOrEqual(2);
+        expect(res?.lines?.length).toBeGreaterThanOrEqual(2);
       });
   });
 });

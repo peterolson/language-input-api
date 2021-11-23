@@ -35,7 +35,11 @@ export class DictionaryService {
       },
     ).then((res) => res.json());
 
-    const result = response[0];
+    const result = response?.[0] || {
+      normalizedSource: word,
+      displaySource: word,
+      translations: [],
+    };
 
     if (!result.translations.length) {
       const translationResponse = await fetch(
@@ -79,6 +83,6 @@ export class DictionaryService {
         body: JSON.stringify([{ Text: word, Translation: translation }]),
       },
     ).then((res) => res.json());
-    return response[0]?.examples;
+    return response[0]?.examples || [];
   }
 }

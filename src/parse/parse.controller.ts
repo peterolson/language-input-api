@@ -4,7 +4,7 @@ import {
   validateNotEmpty,
 } from '../validate/validations';
 import { ParseService } from './parse.service';
-import { LanguageCode } from './parse.types';
+import { LanguageCode, ParsedText } from './parse.types';
 
 @Controller('parse')
 export class ParseController {
@@ -14,7 +14,7 @@ export class ParseController {
   async parseText(
     @Body('lang') language: LanguageCode,
     @Body('text') text: string,
-  ): Promise<any> {
+  ): Promise<ParsedText> {
     validateLanguageCode(language, 'lang');
     validateNotEmpty(text, 'text');
 
