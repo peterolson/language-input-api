@@ -8,6 +8,8 @@ import {
   TextLine,
   Token,
 } from './parse.types';
+import { decode } from 'html-entities';
+import { stripHtml } from 'string-strip-html';
 
 const PORT = 4310;
 
@@ -20,9 +22,10 @@ export class ParseService {
     });
   }
   async parseText(lang: LanguageCode, text: string): Promise<ParsedText> {
+    const sanitizedText = stripReferences(stripHtml(decode(text)).result);
     const result = await fetch(`http://localhost:${PORT}/parse`, {
       method: 'POST',
-      body: JSON.stringify({ lang, text }),
+      body: JSON.stringify({ lang, text: sanitizedText }),
     }).then((res) => res.json());
     return divideLines(result.text, result.tokens, result.sents);
   }
@@ -124,4 +127,8 @@ function divideLines(
     lines: sentenceSegments,
   };
   return textLines;
+}
+
+function stripReferences(text: string): string {
+  return text.replace(/\[\d+\]/g, '');
 }
