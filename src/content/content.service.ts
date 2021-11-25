@@ -10,6 +10,7 @@ const summaryProjection = {
   title: 1,
   thumb: 1,
   lemmas: 1,
+  tradLemmas: 1,
   wordCount: 1,
   channel: 1,
   duration: 1,

@@ -7,6 +7,7 @@ import {
   DictionaryLookup,
   DictionaryTranslation,
 } from './dictionary.types';
+import { traditionalize } from 'hanzi-tools';
 
 @Injectable()
 export class DictionaryService {
@@ -54,7 +55,7 @@ export class DictionaryService {
         });
       result.translations = translations;
     }
-
+    addTradVariantsToLookup(result, from, to);
     return result;
   }
 
@@ -73,6 +74,62 @@ export class DictionaryService {
         body: JSON.stringify([{ Text: word, Translation: translation }]),
       },
     ).then((res) => res.json());
-    return response[0]?.examples || [];
+    const examples = response[0]?.examples || [];
+    for (const example of examples) {
+      addTradVariantsToExample(example, from, to);
+    }
+    return examples;
+  }
+}
+
+function addTradVariantsToLookup(
+  result: DictionaryLookup,
+  from: LanguageCode,
+  to: LanguageCode,
+) {
+  if (from === LanguageCode.Chinese) {
+    result.normalizedSourceTrad = traditionalize(result.normalizedSource);
+    result.displaySourceTrad = traditionalize(result.displaySource);
+    for (const translation of result.translations) {
+      for (const backTranslation of translation.backTranslations) {
+        backTranslation.normalizedTextTrad = traditionalize(
+          backTranslation.normalizedText,
+        );
+        backTranslation.displayTextTrad = traditionalize(
+          backTranslation.displayText,
+        );
+      }
+      for (const example of translation.examples || []) {
+        addTradVariantsToExample(example, from, to);
+      }
+    }
+  }
+  if (to === LanguageCode.Chinese) {
+    for (const translation of result.translations) {
+      translation.normalizedTargetTrad = traditionalize(
+        translation.normalizedTarget,
+      );
+      translation.displayTargetTrad = traditionalize(translation.displayTarget);
+      for (const example of translation.examples || []) {
+        addTradVariantsToExample(example, from, to);
+      }
+    }
+  }
+}
+
+function addTradVariantsToExample(
+  example: DictionaryExample,
+  from: LanguageCode,
+  to: LanguageCode,
+) {
+  if (from === LanguageCode.Chinese) {
+    example.sourcePrefixTrad = traditionalize(example.sourcePrefix);
+    example.sourceTermTrad = traditionalize(example.sourceTerm);
+    example.sourceSuffixTrad = traditionalize(example.sourceSuffix);
+  }
+  if (to === LanguageCode.Chinese) {
+    example.targetPrefixTrad = traditionalize(example.targetPrefix);
+    example.targetTermTrad = traditionalize(example.targetTerm);
+    example.targetSuffixTrad = traditionalize(example.targetSuffix);
   }
 }

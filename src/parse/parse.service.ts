@@ -10,8 +10,7 @@ import {
 } from './parse.types';
 import { decode } from 'html-entities';
 import { stripHtml } from 'string-strip-html';
-import { transliterate } from './transliterate';
-import { pinyinify } from 'hanzi-tools';
+import { pinyinify, traditionalize } from 'hanzi-tools';
 import { pinyinToZhuyin } from 'pinyin-zhuyin';
 
 const PORT = 4310;
@@ -44,13 +43,8 @@ export class ParseService {
     }).then((res) => res.json());
     const parsedText = divideLines(result.text, result.tokens, result.sents);
     if (lang === LanguageCode.Chinese) {
-      const traditionalText = await transliterate(
-        [result.text],
-        LanguageCode.Chinese,
-        'Hans',
-        'Hant',
-      );
-      await applyTraditionalText(parsedText, traditionalText[0]);
+      const traditionalText = traditionalize(parsedText.rawText);
+      await applyTraditionalText(parsedText, traditionalText);
     }
     return parsedText;
   }

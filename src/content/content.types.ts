@@ -27,6 +27,7 @@ export type ContentItem = {
   timings: [number, number][];
   media: Media;
   lemmas: string[];
+  tradLemmas?: string[];
   wordCount: number;
   url: string;
   publishedDate: Date;
@@ -44,6 +45,7 @@ export type ContentItemSummary = {
   title: string;
   thumb: string;
   lemmas: string[];
+  tradLemmas?: string[];
   wordCount: number;
   channel: string;
   duration: number;
