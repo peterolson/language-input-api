@@ -35,6 +35,8 @@ export type Sentence = {
 
 export type Token = {
   text: string;
+  tradText?: string;
+  transliterations?: string[];
   suffix: string;
   tag: string;
   pos: string;

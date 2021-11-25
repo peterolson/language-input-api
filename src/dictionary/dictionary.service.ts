@@ -1,22 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import fetch from 'node-fetch';
+import { getHeaders } from 'src/data/azure';
 import { LanguageCode } from 'src/parse/parse.types';
 import {
   DictionaryExample,
   DictionaryLookup,
   DictionaryTranslation,
 } from './dictionary.types';
-
-function getHeaders() {
-  const subscriptionKey = process.env.AZURE_COGNITIVE_SERVICES_KEY;
-  const subscriptionRegion = process.env.AZURE_COGNITIVE_SERVICES_REGION;
-
-  return {
-    'Content-Type': 'application/json',
-    'Ocp-Apim-Subscription-Key': subscriptionKey,
-    'Ocp-Apim-Subscription-Region': subscriptionRegion,
-  };
-}
 
 @Injectable()
 export class DictionaryService {

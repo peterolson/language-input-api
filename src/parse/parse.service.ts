@@ -10,24 +10,49 @@ import {
 } from './parse.types';
 import { decode } from 'html-entities';
 import { stripHtml } from 'string-strip-html';
+import { transliterate } from './transliterate';
+import { pinyinify } from 'hanzi-tools';
+import { pinyinToZhuyin } from 'pinyin-zhuyin';
 
 const PORT = 4310;
+new PythonShell('./python/parse.py', {
+  mode: 'text',
+  args: ['--port', PORT.toString()],
+});
+
+let shellIsReady = false;
+async function waitPythonReady() {
+  if (shellIsReady) {
+    return;
+  }
+  return new Promise<void>((resolve) => {
+    setTimeout(() => {
+      shellIsReady = true;
+      resolve();
+    }, 2000);
+  });
+}
 
 @Injectable()
 export class ParseService {
-  constructor() {
-    new PythonShell('./python/parse.py', {
-      mode: 'text',
-      args: ['--port', PORT.toString()],
-    });
-  }
   async parseText(lang: LanguageCode, text: string): Promise<ParsedText> {
     const sanitizedText = stripReferences(stripHtml(decode(text)).result);
+    await waitPythonReady();
     const result = await fetch(`http://localhost:${PORT}/parse`, {
       method: 'POST',
       body: JSON.stringify({ lang, text: sanitizedText }),
     }).then((res) => res.json());
-    return divideLines(result.text, result.tokens, result.sents);
+    const parsedText = divideLines(result.text, result.tokens, result.sents);
+    if (lang === LanguageCode.Chinese) {
+      const traditionalText = await transliterate(
+        [result.text],
+        LanguageCode.Chinese,
+        'Hans',
+        'Hant',
+      );
+      await applyTraditionalText(parsedText, traditionalText[0]);
+    }
+    return parsedText;
   }
 }
 
@@ -131,4 +156,25 @@ function divideLines(
 
 function stripReferences(text: string): string {
   return text.replace(/\[\d+\]/g, '');
+}
+
+async function applyTraditionalText(
+  parsedText: ParsedText,
+  traditionalText: string,
+) {
+  const words: Token[] = [];
+  for (const line of parsedText.lines) {
+    for (const sentence of line.sentences) {
+      for (const token of sentence.tokens) {
+        const { start, end } = token;
+        if (token.isWord) {
+          words.push(token);
+          token.tradText = traditionalText.slice(start, end);
+          const pinyin = pinyinify(token.text);
+          const zhuyin = pinyinToZhuyin(pinyin);
+          token.transliterations = [pinyin, zhuyin];
+        }
+      }
+    }
+  }
 }

@@ -32,6 +32,10 @@ export type ContentItem = {
   publishedDate: Date;
   channel: string;
   duration: number;
+  likes: number;
+  dislikes: number;
+  neutral: number;
+  views: number;
 };
 
 export type ContentItemSummary = {
@@ -44,4 +48,8 @@ export type ContentItemSummary = {
   channel: string;
   duration: number;
   publishedDate: Date;
+  likes: number;
+  dislikes: number;
+  neutral: number;
+  views: number;
 };

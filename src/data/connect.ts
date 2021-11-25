@@ -19,4 +19,8 @@ function ensureIndices(db: Db) {
   content.createIndex({ lang: 1, publishedDate: -1 });
   content.createIndex({ channel: 1, publishedDate: -1 });
   content.createIndex({ publishedDate: -1 });
+  content.createIndex({ views: -1 });
+  content.createIndex({ likes: -1 });
+  content.createIndex({ dislikes: 1 });
+  content.createIndex({ neutral: 1 });
 }
