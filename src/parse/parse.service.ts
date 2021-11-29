@@ -12,6 +12,7 @@ import { decode } from 'html-entities';
 import { stripHtml } from 'string-strip-html';
 import { pinyinify, traditionalize } from 'hanzi-tools';
 import { pinyinToZhuyin } from 'pinyin-zhuyin';
+import * as japanese from 'japanese';
 
 const PORT = 4310;
 new PythonShell('./python/parse.py', {
@@ -44,7 +45,10 @@ export class ParseService {
     const parsedText = divideLines(result.text, result.tokens, result.sents);
     if (lang === LanguageCode.Chinese) {
       const traditionalText = traditionalize(parsedText.rawText);
-      await applyTraditionalText(parsedText, traditionalText);
+      applyTraditionalText(parsedText, traditionalText);
+    }
+    if (lang === LanguageCode.Japanese) {
+      addRomaji(parsedText);
     }
     return parsedText;
   }
@@ -152,10 +156,7 @@ function stripReferences(text: string): string {
   return text.replace(/\[\d+\]/g, '');
 }
 
-async function applyTraditionalText(
-  parsedText: ParsedText,
-  traditionalText: string,
-) {
+function applyTraditionalText(parsedText: ParsedText, traditionalText: string) {
   const words: Token[] = [];
   for (const line of parsedText.lines) {
     for (const sentence of line.sentences) {
@@ -167,6 +168,23 @@ async function applyTraditionalText(
           const pinyin = pinyinify(token.text);
           const zhuyin = pinyinToZhuyin(pinyin);
           token.transliterations = [pinyin, zhuyin];
+        }
+      }
+    }
+  }
+}
+
+function addRomaji(parsedText: ParsedText) {
+  for (const line of parsedText.lines) {
+    for (const sentence of line.sentences) {
+      for (const token of sentence.tokens) {
+        const { morph } = token;
+        if (morph?.includes('Reading=')) {
+          const parts = morph.split('|');
+          const reading = parts
+            .find((x) => x.startsWith('Reading='))
+            .split('=')[1];
+          token.transliterations = [reading, japanese.romanize(reading)];
         }
       }
     }

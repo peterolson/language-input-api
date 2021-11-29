@@ -26,10 +26,13 @@
     "@nestjs/platform-express": "^8.0.0",
     "@nestjs/platform-fastify": "^8.2.3",
     "@types/node-fetch": "^2.5.12",
+    "bcrypt": "^5.0.1",
     "compression": "^1.7.4",
     "dotenv": "^10.0.0",
     "hanzi-tools": "^1.2.25",
     "html-entities": "^2.3.2",
+    "japanese": "^1.2.0",
+    "jsonwebtoken": "^8.5.1",
     "mongodb": "^4.2.0",
     "node-fetch": "^2.6.6",
     "pinyin-zhuyin": "^1.0.4",
@@ -37,7 +40,8 @@
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
     "rxjs": "^7.2.0",
-    "string-strip-html": "^8.3.0"
+    "string-strip-html": "^8.3.0",
+    "youtube-dl-exec": "^2.0.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^8.0.0",

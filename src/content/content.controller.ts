@@ -7,13 +7,18 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { ParseService } from 'src/parse/parse.service';
+import { LanguageCode } from 'src/parse/parse.types';
 import { validateNotEmpty } from 'src/validate/validations';
 import { ContentService } from './content.service';
 import { ContentItem, ContentItemSummary } from './content.types';
 
 @Controller('content')
 export class ContentController {
-  constructor(private readonly contentService: ContentService) {}
+  constructor(
+    private readonly contentService: ContentService,
+    private readonly parseService: ParseService,
+  ) {}
   @Get()
   async getContent(@Query('id') id: string): Promise<ContentItem> {
     try {
@@ -62,6 +67,14 @@ export class ContentController {
     );
   }
 
+  @Post('ids')
+  async getContentByIds(
+    @Body('ids') ids: string[],
+  ): Promise<ContentItemSummary[]> {
+    validateNotEmpty(ids, 'ids');
+    return await this.contentService.getContentByIds(ids);
+  }
+
   @Post('view')
   async viewContent(@Query('id') id: string) {
     validateNotEmpty(id, 'id');
@@ -84,5 +97,38 @@ export class ContentController {
   async neutralContent(@Query('id') id: string) {
     validateNotEmpty(id, 'id');
     return await this.contentService.neutralContent(id);
+  }
+
+  @Get('yt-subtitles')
+  async getYoutubeSubtitles(@Query('id') youtubeId: string) {
+    validateNotEmpty(youtubeId, 'id');
+    const res = await this.contentService.getYoutubeSubtitleData(youtubeId);
+    if (!res) {
+      throw new HttpException(
+        `No captions for video '${youtubeId}' found.`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    return res;
+  }
+
+  @Post('youtube')
+  async addYouTubeContent(
+    @Body('lang') lang: LanguageCode,
+    @Body('youtubeId') youtubeId: string,
+    @Body('vtt') vtt: string,
+    @Body('duration') duration: number,
+  ) {
+    validateNotEmpty(lang, 'lang');
+    validateNotEmpty(youtubeId, 'youtubeId');
+    validateNotEmpty(vtt, 'vtt');
+    validateNotEmpty(duration, 'duration');
+    return await this.contentService.uploadYoutubeVideo(
+      lang,
+      youtubeId,
+      vtt,
+      duration,
+      this.parseService,
+    );
   }
 }

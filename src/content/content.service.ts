@@ -3,6 +3,10 @@ import { Collection } from 'mongodb';
 import { getDb } from '../data/connect';
 import { ContentItem, ContentItemSummary } from './content.types';
 import { ObjectId } from 'mongodb';
+import { exec } from 'youtube-dl-exec';
+import { getYoutubeVideo } from './youtube';
+import { LanguageCode } from 'src/parse/parse.types';
+import { ParseService } from 'src/parse/parse.service';
 
 const summaryProjection = {
   _id: 1,
@@ -86,6 +90,19 @@ export class ContentService {
       .toArray();
   }
 
+  async getContentByIds(ids: string[]) {
+    const db = await getDb();
+    const collection: Collection<ContentItem> = db.collection('content');
+    const items = await collection
+      .find({
+        _id: { $in: ids.map((x) => new ObjectId(x)) },
+      })
+      .toArray();
+    return items.sort(
+      (a, b) => ids.indexOf(a._id.toString()) - ids.indexOf(b._id.toString()),
+    );
+  }
+
   async viewContent(id) {
     const db = await getDb();
     const collection: Collection<ContentItem> = db.collection('content');
@@ -112,6 +129,49 @@ export class ContentService {
     const collection: Collection<ContentItem> = db.collection('content');
     const _id = new ObjectId(id);
     return await collection.updateOne({ _id }, { $inc: { neutral: 1 } });
+  }
+
+  async getYoutubeSubtitleData(youtubeId: string) {
+    const ytResponse = await exec(
+      `https://www.youtube.com/watch?v=${youtubeId}`,
+      {
+        dumpSingleJson: true,
+      },
+    );
+    const ytData = JSON.parse(ytResponse.stdout);
+    if (!ytData) return null;
+    const { duration, subtitles } = ytData;
+    return { duration, subtitles };
+  }
+
+  async uploadYoutubeVideo(
+    lang: LanguageCode,
+    youtubeId: string,
+    vtt: string,
+    duration: number,
+    parseService: ParseService,
+  ) {
+    const item = await getYoutubeVideo(
+      lang,
+      youtubeId,
+      vtt,
+      duration,
+      parseService,
+    );
+    const db = await getDb();
+    const collection: Collection<ContentItem> = db.collection('content');
+    const updateResult = await collection.updateOne(
+      {
+        url: item.url,
+      },
+      {
+        $set: item,
+      },
+      {
+        upsert: true,
+      },
+    );
+    return { id: updateResult.upsertedId.toString() };
   }
 }
 
