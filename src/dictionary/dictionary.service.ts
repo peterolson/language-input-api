@@ -8,9 +8,16 @@ import {
   DictionaryTranslation,
 } from './dictionary.types';
 import { traditionalize } from 'hanzi-tools';
+import { v2 } from '@google-cloud/translate';
+const { Translate } = v2;
 
 @Injectable()
 export class DictionaryService {
+  private translate: v2.Translate;
+  constructor() {
+    const projectId = process.env.GOOGLE_PROJECT_ID;
+    this.translate = new Translate({ projectId });
+  }
   async lookupWord(
     word: string,
     from: LanguageCode,
@@ -55,6 +62,28 @@ export class DictionaryService {
         });
       result.translations = translations;
     }
+
+    const [googleTranslate] = await this.translate.translate(word, {
+      to,
+      from,
+    });
+
+    if (
+      !result.translations.find(
+        (x) =>
+          x.normalizedTarget.toLowerCase() === googleTranslate.toLowerCase(),
+      )
+    ) {
+      result.translations.push({
+        normalizedTarget: googleTranslate,
+        displayTarget: googleTranslate,
+        posTag: '',
+        confidence: 1,
+        prefixWord: '',
+        backTranslations: [],
+      });
+    }
+
     addTradVariantsToLookup(result, from, to);
     return result;
   }
