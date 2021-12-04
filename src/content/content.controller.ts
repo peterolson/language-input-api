@@ -35,19 +35,30 @@ export class ContentController {
     }
   }
 
-  @Post('newest')
+  @Post('list')
   async getNewestContent(
     @Query('limit') limit = '25',
     @Query('skip') skip = '0',
     @Query('langs') langs: string,
     @Body('viewedIds') viewedIds: string[],
+    @Body('sortBy') sortBy: 'newest' | 'bestLevel' | 'popular',
+    @Body('minDuration') minDuration: number,
+    @Body('maxDuration') maxDuration: number,
+    @Body('isTraditional') isTraditional: boolean,
   ): Promise<ContentItemSummary[]> {
     validateNotEmpty(langs, 'langs');
-    return await this.contentService.getNewestContent(
+    validateNotEmpty(viewedIds, 'viewedIds');
+    validateNotEmpty(sortBy, 'sortBy');
+    validateNotEmpty(isTraditional, 'isTraditional');
+    return await this.contentService.getContentList(
       +limit,
       +skip,
+      sortBy,
+      minDuration,
+      maxDuration,
       langs.split('|'),
       viewedIds || [],
+      isTraditional,
     );
   }
 

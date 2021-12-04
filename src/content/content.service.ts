@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Collection } from 'mongodb';
+import { Collection, Sort } from 'mongodb';
 import { getDb } from '../data/connect';
 import { ContentItem, ContentItemSummary } from './content.types';
 import { ObjectId } from 'mongodb';
@@ -25,6 +25,14 @@ const summaryProjection = {
   views: 1,
 };
 
+const sorts: Record<string, (isTraditional: boolean) => Sort> = {
+  newest: () => ({ publishedDate: -1 }),
+  bestLevel: (isTraditional: boolean) => ({
+    [isTraditional ? 'tradDifficulty' : 'difficulty']: 1,
+  }),
+  popular: () => ({ popularity: -1, publishedDate: -1 }),
+};
+
 @Injectable()
 export class ContentService {
   async getContent(id: string): Promise<ContentItem> {
@@ -33,32 +41,40 @@ export class ContentService {
     const _id = new ObjectId(id);
     return await collection.findOne({ _id });
   }
-  async getNewestContent(
+  async getContentList(
     limit: number,
     skip: number,
+    sortBy: 'newest' | 'bestLevel' | 'popular',
+    minDuration: number,
+    maxDuration: number,
     languages: string[],
     viewedIds: string[] = [],
+    isTraditional: boolean,
   ): Promise<ContentItemSummary[]> {
     const db = await getDb();
     const collection: Collection<ContentItem> = db.collection('content');
     const allResults: ContentItemSummary[][] = [];
+    const dividedLimit = Math.ceil(limit / languages.length);
+    const dividedSkip = Math.floor(dividedLimit * (skip / limit));
     for (const lang of languages) {
-      const results: ContentItemSummary[] = await collection
+      const results: ContentItemSummary[] = (await collection
         .find(
           {
             lang,
             _id: { $nin: viewedIds.map((x) => new ObjectId(x)) },
+            duration: {
+              ...(minDuration !== null ? { $gte: minDuration } : {}),
+              ...(maxDuration !== null ? { $lte: maxDuration } : {}),
+            },
           },
           {
-            sort: {
-              publishedDate: -1,
-            },
             projection: summaryProjection,
+            sort: sorts[sortBy](isTraditional),
           },
         )
-        .skip(skip)
-        .limit(Math.min(limit, 50) || 25)
-        .toArray();
+        .skip(dividedSkip)
+        .limit(Math.min(dividedLimit, 50) || 25)
+        .toArray()) as ContentItemSummary[];
       allResults.push(results);
     }
     return zip(allResults);
@@ -107,28 +123,60 @@ export class ContentService {
     const db = await getDb();
     const collection: Collection<ContentItem> = db.collection('content');
     const _id = new ObjectId(id);
-    return await collection.updateOne({ _id }, { $inc: { views: 1 } });
+    const popularity = await this.getPopularity(collection, _id);
+    return await collection.updateOne(
+      { _id },
+      { $inc: { views: 1 }, $set: { popularity } },
+    );
   }
 
   async likeContent(id) {
     const db = await getDb();
     const collection: Collection<ContentItem> = db.collection('content');
     const _id = new ObjectId(id);
-    return await collection.updateOne({ _id }, { $inc: { likes: 1 } });
+    const popularity = await this.getPopularity(collection, _id);
+    return await collection.updateOne(
+      { _id },
+      { $inc: { likes: 1 }, $set: { popularity } },
+    );
   }
 
   async dislikeContent(id) {
     const db = await getDb();
     const collection: Collection<ContentItem> = db.collection('content');
     const _id = new ObjectId(id);
-    return await collection.updateOne({ _id }, { $inc: { dislikes: 1 } });
+    const popularity = await this.getPopularity(collection, _id);
+    return await collection.updateOne(
+      { _id },
+      { $inc: { dislikes: 1 }, $set: { popularity } },
+    );
   }
 
   async neutralContent(id) {
     const db = await getDb();
     const collection: Collection<ContentItem> = db.collection('content');
     const _id = new ObjectId(id);
-    return await collection.updateOne({ _id }, { $inc: { neutral: 1 } });
+    const popularity = await this.getPopularity(collection, _id);
+    return await collection.updateOne(
+      { _id },
+      { $inc: { neutral: 1 }, $set: { popularity } },
+    );
+  }
+
+  async getPopularity(collection: Collection<ContentItem>, _id: ObjectId) {
+    const item = await collection.findOne(
+      { _id },
+      { projection: { views: 1, likes: 1, dislikes: 1, neutral: 1 } },
+    );
+    if (!item) return 0;
+    const likes = item.likes || 0;
+    const dislikes = item.dislikes || 0;
+    const neutral = item.neutral || 0;
+    const views = item.views || 0;
+    const bounceRate = 1 - (likes + dislikes + neutral) / (views + 1);
+    const sentiment = likes - dislikes + neutral / 5;
+    const reactions = likes + dislikes + neutral + views / 50;
+    return (reactions * (sentiment + 1)) / bounceRate;
   }
 
   async getYoutubeSubtitleData(youtubeId: string) {

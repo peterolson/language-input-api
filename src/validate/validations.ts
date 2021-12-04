@@ -19,7 +19,7 @@ export function validateLanguageCode(
 }
 
 export function validateNotEmpty(value: any, propertyName: string): void {
-  if (!value) {
+  if (value === undefined || value === null) {
     throw new HttpException(
       `'${propertyName}' property is required`,
       HttpStatus.BAD_REQUEST,
