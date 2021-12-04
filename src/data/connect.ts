@@ -23,4 +23,5 @@ function ensureIndices(db: Db) {
   content.createIndex({ likes: -1 });
   content.createIndex({ dislikes: 1 });
   content.createIndex({ neutral: 1 });
+  content.createIndex({ url: 1 });
 }
