@@ -36,7 +36,7 @@ export class ContentController {
   }
 
   @Post('list')
-  async getNewestContent(
+  async getContentList(
     @Query('limit') limit = '25',
     @Query('skip') skip = '0',
     @Query('langs') langs: string,
@@ -59,6 +59,31 @@ export class ContentController {
       langs.split('|'),
       viewedIds || [],
       isTraditional,
+    );
+  }
+
+  @Post('recommend')
+  async recommendContent(
+    @Query('channel') channel: string,
+    @Query('limit') limit = '25',
+    @Query('skip') skip = '0',
+    @Query('lang') lang: string,
+    @Query('difficulty') difficulty: string,
+    @Query('id') id: string,
+    @Body('viewedIds') viewedIds: string[],
+  ) {
+    validateNotEmpty(channel, 'channel');
+    validateNotEmpty(lang, 'lang');
+    validateNotEmpty(difficulty, 'difficulty');
+    console.log(id);
+    return await this.contentService.getContentRecommendations(
+      +limit,
+      +skip,
+      viewedIds || [],
+      lang,
+      decodeURIComponent(channel),
+      +difficulty,
+      id,
     );
   }
 

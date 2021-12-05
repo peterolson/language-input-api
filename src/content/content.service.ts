@@ -106,6 +106,62 @@ export class ContentService {
       .toArray();
   }
 
+  async getContentRecommendations(
+    limit: number,
+    skip: number,
+    viewedIds: string[],
+    lang: string,
+    channel: string,
+    difficulty: number,
+    id: string,
+  ) {
+    const db = await getDb();
+    const collection: Collection<ContentItem> = db.collection('content');
+    const dividedLimit = Math.ceil(limit / 2);
+    const dividedSkip = Math.floor(dividedLimit * (skip / limit));
+    const inChannel = await collection
+      .find(
+        {
+          lang,
+          _id: {
+            $nin: viewedIds
+              .map((x) => new ObjectId(x))
+              .concat(new ObjectId(id)),
+          },
+          difficulty: { $gte: difficulty * 0.75, $lte: difficulty * 2 },
+          channel,
+        },
+        {
+          projection: summaryProjection,
+          sort: { popularity: -1 },
+        },
+      )
+      .skip(dividedSkip)
+      .limit(dividedLimit)
+      .toArray();
+    const notInChannel = await collection
+      .find(
+        {
+          lang,
+          _id: {
+            $nin: viewedIds
+              .map((x) => new ObjectId(x))
+              .concat(new ObjectId(id)),
+          },
+          difficulty: { $gte: difficulty * 0.75, $lte: difficulty * 2 },
+          channel: { $ne: channel },
+        },
+        {
+          projection: summaryProjection,
+          sort: { popularity: -1 },
+        },
+      )
+      .skip(dividedSkip)
+      .limit(dividedLimit)
+      .toArray();
+    return zip([inChannel, notInChannel]);
+  }
+
   async getContentByIds(ids: string[]) {
     const db = await getDb();
     const collection: Collection<ContentItem> = db.collection('content');
