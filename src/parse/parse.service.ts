@@ -15,9 +15,10 @@ import { pinyinToZhuyin } from 'pinyin-zhuyin';
 import * as japanese from 'japanese';
 
 const PORT = 4310;
+const HOST = '0.0.0.0';
 new PythonShell('./python/parse.py', {
   mode: 'text',
-  args: ['--port', PORT.toString()],
+  args: ['--port', PORT.toString(), '--listen', HOST],
 });
 
 let shellIsReady = false;
@@ -38,7 +39,7 @@ export class ParseService {
   async parseText(lang: LanguageCode, text: string): Promise<ParsedText> {
     const sanitizedText = stripReferences(stripHtml(decode(text)).result);
     await waitPythonReady();
-    const result = await fetch(`http://localhost:${PORT}/parse`, {
+    const result = await fetch(`http://${HOST}:${PORT}/parse`, {
       method: 'POST',
       body: JSON.stringify({ lang, text: sanitizedText }),
     }).then((res) => res.json());
