@@ -6,12 +6,16 @@ import {
   HttpStatus,
   Post,
   Query,
+  Headers,
+  Delete,
 } from '@nestjs/common';
 import { ParseService } from 'src/parse/parse.service';
 import { LanguageCode } from 'src/parse/parse.types';
 import { validateNotEmpty } from 'src/validate/validations';
 import { ContentService } from './content.service';
-import { ContentItem, ContentItemSummary } from './content.types';
+import { ContentItem, ContentItemSummary, Media } from './content.types';
+import { Timing } from './uploadText';
+import { getUserFromAuthToken } from 'src/data/user';
 
 @Controller('content')
 export class ContentController {
@@ -75,7 +79,6 @@ export class ContentController {
     validateNotEmpty(channel, 'channel');
     validateNotEmpty(lang, 'lang');
     validateNotEmpty(difficulty, 'difficulty');
-    console.log(id);
     return await this.contentService.getContentRecommendations(
       +limit,
       +skip,
@@ -135,6 +138,29 @@ export class ContentController {
     return await this.contentService.neutralContent(id);
   }
 
+  @Delete('delete')
+  async deleteContent(
+    @Headers('authToken') authToken: string,
+    @Body('id') id: string,
+  ) {
+    validateNotEmpty(authToken, 'authToken');
+    validateNotEmpty(id, 'id');
+    const user = await getUserFromAuthToken(authToken);
+    return await this.contentService.deleteContent(id, user);
+  }
+
+  @Post('report')
+  async reportContent(
+    @Body('id') id: string,
+    @Body('title') title: string,
+    @Body('reason') reason: string,
+  ) {
+    validateNotEmpty(id, 'id');
+    validateNotEmpty(reason, 'reason');
+    validateNotEmpty(title, 'title');
+    return await this.contentService.reportContent(id, title, reason);
+  }
+
   @Get('yt-subtitles')
   async getYoutubeSubtitles(@Query('id') youtubeId: string) {
     validateNotEmpty(youtubeId, 'id');
@@ -164,6 +190,48 @@ export class ContentController {
       youtubeId,
       vtt,
       duration,
+      this.parseService,
+    );
+  }
+
+  @Post('text')
+  async addTextContent(
+    @Headers('authToken') authToken: string,
+    @Body('lang') lang: LanguageCode,
+    @Body('text') text: string,
+    @Body('duration') duration: number,
+    @Body('media') media: Media,
+    @Body('timings') timings: Timing[],
+    @Body('isPrivate') isPrivate: boolean,
+    @Body('url') url: string,
+    @Body('title') title: string,
+    @Body('thumb') thumb: string,
+  ) {
+    validateNotEmpty(authToken, 'authToken');
+    validateNotEmpty(lang, 'lang');
+    validateNotEmpty(text, 'text');
+    validateNotEmpty(duration, 'duration');
+    validateNotEmpty(media, 'media');
+    validateNotEmpty(timings, 'timings');
+    validateNotEmpty(isPrivate, 'isPrivate');
+    validateNotEmpty(url, 'url');
+    validateNotEmpty(title, 'title');
+    validateNotEmpty(thumb, 'thumb');
+
+    const user = await getUserFromAuthToken(authToken);
+
+    return await this.contentService.importText(
+      lang,
+      text,
+      title,
+      media,
+      thumb,
+      duration,
+      timings,
+      isPrivate,
+      url,
+      user._id,
+      user.username,
       this.parseService,
     );
   }

@@ -37,6 +37,9 @@ export type ContentItem = {
   dislikes: number;
   neutral: number;
   views: number;
+  popularity: number;
+  isPrivate?: boolean;
+  userId?: ObjectId;
 };
 
 export type ContentItemSummary = {
@@ -54,4 +57,11 @@ export type ContentItemSummary = {
   dislikes: number;
   neutral: number;
   views: number;
+};
+
+export type ContentFeedback = {
+  reportedAt: Date;
+  reason: string;
+  contentId: string;
+  contentTitle: string;
 };

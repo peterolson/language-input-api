@@ -1,12 +1,19 @@
-import { Injectable } from '@nestjs/common';
-import { Collection, Sort } from 'mongodb';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Collection, Sort, WithId } from 'mongodb';
 import { getDb } from '../data/connect';
-import { ContentItem, ContentItemSummary } from './content.types';
+import {
+  ContentFeedback,
+  ContentItem,
+  ContentItemSummary,
+  Media,
+} from './content.types';
 import { ObjectId } from 'mongodb';
 import { exec } from 'youtube-dl-exec';
 import { getYoutubeVideo } from './youtube';
 import { LanguageCode } from 'src/parse/parse.types';
 import { ParseService } from 'src/parse/parse.service';
+import { addTextContent, Timing } from './uploadText';
+import { User } from 'src/user/user.types';
 
 const summaryProjection = {
   _id: 1,
@@ -66,6 +73,7 @@ export class ContentService {
               ...(minDuration !== null ? { $gte: minDuration } : {}),
               ...(maxDuration !== null ? { $lte: maxDuration } : {}),
             },
+            isPrivate: { $ne: true },
           },
           {
             projection: summaryProjection,
@@ -93,6 +101,7 @@ export class ContentService {
         {
           channel,
           _id: { $nin: viewedIds.map((x) => new ObjectId(x)) },
+          isPrivate: { $ne: true },
         },
         {
           projection: summaryProjection,
@@ -130,6 +139,7 @@ export class ContentService {
           },
           difficulty: { $gte: difficulty * 0.75, $lte: difficulty * 2 },
           channel,
+          isPrivate: { $ne: true },
         },
         {
           projection: summaryProjection,
@@ -150,6 +160,7 @@ export class ContentService {
           },
           difficulty: { $gte: difficulty * 0.75, $lte: difficulty * 2 },
           channel: { $ne: channel },
+          isPrivate: { $ne: true },
         },
         {
           projection: summaryProjection,
@@ -219,6 +230,37 @@ export class ContentService {
     );
   }
 
+  async deleteContent(id: string, user: WithId<User>) {
+    const db = await getDb();
+    const collection: Collection<ContentItem> = db.collection('content');
+    const _id = new ObjectId(id);
+    let isAllowed = user.isAdmin;
+    if (!isAllowed) {
+      const content = await collection.findOne({ _id });
+      isAllowed = content.userId.toString() === user._id.toString();
+    }
+    if (!isAllowed) {
+      throw new HttpException(
+        `Not authorized to delete this content.`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    return await collection.deleteOne({ _id });
+  }
+
+  async reportContent(contentId: string, contentTitle: string, reason: string) {
+    const db = await getDb();
+    const collection: Collection<ContentFeedback> =
+      db.collection('content.feedback');
+    return await collection.insertOne({
+      reportedAt: new Date(),
+      reason,
+      contentId,
+      contentTitle,
+    });
+  }
+
   async getPopularity(collection: Collection<ContentItem>, _id: ObjectId) {
     const item = await collection.findOne(
       { _id },
@@ -276,6 +318,42 @@ export class ContentService {
       },
     );
     return { id: updateResult.upsertedId.toString() };
+  }
+
+  async importText(
+    lang: LanguageCode,
+    text: string,
+    title: string,
+    media: Media,
+    thumb: string,
+    duration: number,
+    timings: Timing[],
+    isPrivate: boolean,
+    url: string,
+    userId: ObjectId,
+    username: string,
+    parseService: ParseService,
+  ) {
+    const db = await getDb();
+    const collection: Collection<ContentItem> = db.collection('content');
+    const item = await addTextContent(
+      {
+        title,
+        text,
+        media,
+        thumb,
+        duration,
+        timings,
+        isPrivate,
+        url,
+        userId,
+        username,
+        lang,
+      },
+      parseService,
+    );
+    const insertResult = await collection.insertOne(item);
+    return { id: insertResult.insertedId.toString() };
   }
 }
 

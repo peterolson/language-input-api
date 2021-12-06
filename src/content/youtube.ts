@@ -2,6 +2,8 @@ import { ParsedText, LanguageCode } from '../parse/parse.types';
 import { ParseService } from '../parse/parse.service';
 import { ContentItem, Media } from './content.types';
 import fetch from 'node-fetch';
+import { simplify } from 'hanzi-tools';
+import { getContentDifficulty } from './difficulty';
 
 export async function getYoutubeVideo(
   lang: LanguageCode,
@@ -14,12 +16,60 @@ export async function getYoutubeVideo(
   const text = captions.map((c) => c.text).join('\n');
   const timings: [number, number][] = captions.map((c) => [c.start, c.end]);
 
-  const parsedText: ParsedText = await parseService.parseText(lang, text);
+  let t = text;
+  if (lang === 'zh') {
+    t = simplify(text);
+  }
+
+  const parsedText: ParsedText = await parseService.parseText(lang, t);
 
   if (timings.length !== parsedText.lines.length) {
     throw new Error("Timings and parsed text don't match");
   }
 
+  const { lemmas, tradLemmas, wordCount } = getTextDetails(parsedText, lang);
+
+  const details = await getVideoDetails(youtubeId);
+  const detail = details.items[0];
+
+  const summary = {
+    title: detail.snippet.title,
+    url: `https://www.youtube.com/watch?v=${youtubeId}`,
+    media: {
+      type: 'youtube',
+      youtubeId,
+    } as Media,
+    thumb: detail.snippet.thumbnails.medium.url,
+    publishedDate: new Date(detail.snippet.publishedAt),
+    channel: detail.snippet.channelTitle,
+  };
+
+  let item: ContentItem = {
+    lang,
+    ...summary,
+    duration,
+    parsedText,
+    timings,
+    lemmas,
+    wordCount,
+    likes: 0,
+    dislikes: 0,
+    neutral: 0,
+    views: 0,
+    popularity: 0,
+  };
+
+  if (lang === LanguageCode.Chinese) {
+    item.tradLemmas = tradLemmas;
+  }
+  item = {
+    ...item,
+    ...(await getContentDifficulty(lang, lemmas, tradLemmas)),
+  };
+  return item;
+}
+
+export function getTextDetails(parsedText: ParsedText, lang: LanguageCode) {
   const lemmaSet = new Set<string>();
   const tradLemmaSet = new Set<string>();
   let wordCount = 0;
@@ -46,39 +96,11 @@ export async function getYoutubeVideo(
     }
   }
 
-  const details = await getVideoDetails(youtubeId);
-  const detail = details.items[0];
-
-  const summary = {
-    title: detail.snippet.title,
-    url: `https://www.youtube.com/watch?v=${youtubeId}`,
-    media: {
-      type: 'youtube',
-      youtubeId,
-    } as Media,
-    thumb: detail.snippet.thumbnails.medium.url,
-    publishedDate: new Date(detail.snippet.publishedAt),
-    channel: detail.snippet.channelTitle,
-  };
-
-  const item: ContentItem = {
-    lang,
-    ...summary,
-    duration,
-    parsedText,
-    timings,
+  return {
     lemmas: Array.from(lemmaSet),
+    tradLemmas: Array.from(tradLemmaSet),
     wordCount,
-    likes: 0,
-    dislikes: 0,
-    neutral: 0,
-    views: 0,
   };
-
-  if (lang === LanguageCode.Chinese) {
-    item.tradLemmas = Array.from(tradLemmaSet);
-  }
-  return item;
 }
 
 export async function getVideoDetails(youtubeId) {

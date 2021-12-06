@@ -47,6 +47,7 @@ export class UserController {
       username: normalizedUserName,
       id: existingUser._id.toString(),
       createdAt: existingUser.createdAt,
+      isAdmin: existingUser.isAdmin,
     };
 
     return {
