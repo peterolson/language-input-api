@@ -20,6 +20,7 @@ export class DictionaryService {
   }
   async lookupWord(
     word: string,
+    sentence: string,
     from: LanguageCode,
     to: LanguageCode,
   ): Promise<DictionaryLookup> {
@@ -84,6 +85,15 @@ export class DictionaryService {
       });
     }
 
+    if (sentence) {
+      const [googleTranslate2] = await this.translate.translate(sentence, {
+        to,
+        from,
+      });
+      result.originalSentence = sentence;
+      result.translatedSentence = googleTranslate2;
+    }
+
     addTradVariantsToLookup(result, from, to);
     return result;
   }
@@ -132,6 +142,9 @@ function addTradVariantsToLookup(
         addTradVariantsToExample(example, from, to);
       }
     }
+    if (result.originalSentence) {
+      result.originalSentenceTrad = traditionalize(result.originalSentence);
+    }
   }
   if (to === LanguageCode.Chinese) {
     for (const translation of result.translations) {
@@ -142,6 +155,9 @@ function addTradVariantsToLookup(
       for (const example of translation.examples || []) {
         addTradVariantsToExample(example, from, to);
       }
+    }
+    if (result.translatedSentence) {
+      result.translatedSentenceTrad = traditionalize(result.translatedSentence);
     }
   }
 }

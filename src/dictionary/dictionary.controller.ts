@@ -16,11 +16,12 @@ export class DictionaryController {
     @Body('from') from: LanguageCode,
     @Body('to') to: LanguageCode,
     @Body('word') word: string,
+    @Body('sentence') sentence: string,
   ): Promise<DictionaryLookup> {
     validateLanguageCode(from, 'from');
     validateLanguageCode(to, 'to');
     validateNotEmpty(word, 'word');
-    return await this.dictionaryService.lookupWord(word, from, to);
+    return await this.dictionaryService.lookupWord(word, sentence, from, to);
   }
 
   @Post('examples')
