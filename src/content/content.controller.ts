@@ -45,10 +45,12 @@ export class ContentController {
     @Query('skip') skip = '0',
     @Query('langs') langs: string,
     @Body('viewedIds') viewedIds: string[],
-    @Body('sortBy') sortBy: 'newest' | 'bestLevel' | 'popular',
+    @Body('sortBy') sortBy: 'newest' | 'recommended' | 'popular',
     @Body('minDuration') minDuration: number,
     @Body('maxDuration') maxDuration: number,
     @Body('isTraditional') isTraditional: boolean,
+    @Body('ignore') ignore: string[],
+    @Body('recommend') recommend: string[],
   ): Promise<ContentItemSummary[]> {
     validateNotEmpty(langs, 'langs');
     validateNotEmpty(viewedIds, 'viewedIds');
@@ -62,6 +64,8 @@ export class ContentController {
       maxDuration,
       langs.split('|'),
       viewedIds || [],
+      ignore || [],
+      recommend || [],
       isTraditional,
     );
   }

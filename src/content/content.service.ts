@@ -34,9 +34,7 @@ const summaryProjection = {
 
 const sorts: Record<string, (isTraditional: boolean) => Sort> = {
   newest: () => ({ publishedDate: -1 }),
-  bestLevel: (isTraditional: boolean) => ({
-    [isTraditional ? 'tradDifficulty' : 'difficulty']: 1,
-  }),
+  recommended: () => ({ publishedDate: -1 }),
   popular: () => ({ popularity: -1, publishedDate: -1 }),
 };
 
@@ -51,11 +49,13 @@ export class ContentService {
   async getContentList(
     limit: number,
     skip: number,
-    sortBy: 'newest' | 'bestLevel' | 'popular',
+    sortBy: 'newest' | 'recommended' | 'popular',
     minDuration: number,
     maxDuration: number,
     languages: string[],
     viewedIds: string[] = [],
+    ignore: string[],
+    recommend: string[],
     isTraditional: boolean,
   ): Promise<ContentItemSummary[]> {
     const db = await getDb();
@@ -64,25 +64,47 @@ export class ContentService {
     const dividedLimit = Math.ceil(limit / languages.length);
     const dividedSkip = Math.floor(dividedLimit * (skip / limit));
     for (const lang of languages) {
-      const results: ContentItemSummary[] = (await collection
-        .find(
-          {
-            lang,
-            _id: { $nin: viewedIds.map((x) => new ObjectId(x)) },
-            duration: {
-              ...(minDuration !== null ? { $gte: minDuration } : {}),
-              ...(maxDuration !== null ? { $lte: maxDuration } : {}),
-            },
-            isPrivate: { $ne: true },
-          },
-          {
-            projection: summaryProjection,
-            sort: sorts[sortBy](isTraditional),
-          },
-        )
+      const query = {
+        lang,
+        _id: {
+          ...(sortBy === 'recommended'
+            ? {
+                $in: recommend.map((x) => new ObjectId(x)),
+                $nin: viewedIds.concat(ignore).map((x) => new ObjectId(x)),
+              }
+            : {
+                $nin: viewedIds.map((x) => new ObjectId(x)),
+              }),
+        },
+        duration: {
+          ...(minDuration !== null ? { $gte: minDuration } : {}),
+          ...(maxDuration !== null ? { $lte: maxDuration } : {}),
+        },
+        isPrivate: { $ne: true },
+      };
+      const options = {
+        projection: summaryProjection,
+        sort: sorts[sortBy](isTraditional),
+      };
+      const l = Math.min(dividedLimit, 50) || 25;
+      let results: ContentItemSummary[] = (await collection
+        .find(query, options)
         .skip(dividedSkip)
-        .limit(Math.min(dividedLimit, 50) || 25)
+        .limit(l)
         .toArray()) as ContentItemSummary[];
+      if (
+        sortBy === 'recommended' &&
+        results.length < l &&
+        '$in' in query._id
+      ) {
+        delete query._id.$in;
+        const moreResults = await collection
+          .find(query, options)
+          .skip(dividedSkip)
+          .limit(l - results.length)
+          .toArray();
+        results = results.concat(moreResults);
+      }
       allResults.push(results);
     }
     return zip(allResults);
