@@ -126,8 +126,9 @@ export class ContentService {
   ) {
     const db = await getDb();
     const collection: Collection<ContentItem> = db.collection('content');
-    const dividedLimit = Math.ceil(limit / 2);
-    const dividedSkip = Math.floor(dividedLimit * (skip / limit));
+    const l = limit > 0 ? limit : 30;
+    const dividedLimit = Math.ceil(l / 2);
+    const dividedSkip = Math.floor(dividedLimit * (skip / l));
     const inChannel = await collection
       .find(
         {
