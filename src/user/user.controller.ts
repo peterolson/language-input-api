@@ -7,13 +7,14 @@ import {
   HttpStatus,
   Post,
 } from '@nestjs/common';
-import { Collection } from 'mongodb';
+import { Collection, WithId } from 'mongodb';
 import { getDb } from 'src/data/connect';
 import { validateNotEmpty } from 'src/validate/validations';
 import { User } from './user.types';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import { ObjectId } from 'mongodb';
+import { mungeEmail, sendEmail } from 'src/data/email';
 
 @Controller('user')
 export class UserController {
@@ -63,6 +64,7 @@ export class UserController {
     @Body('email') email: string,
   ) {
     const normalizedUserName = username?.toLowerCase().trim();
+    const normalizedEmail = email?.toLowerCase().trim();
     validateNotEmpty(normalizedUserName, 'username');
     validateNotEmpty(password, 'password');
     const passwordHash = await bcrypt.hash(password, 10);
@@ -80,7 +82,7 @@ export class UserController {
       username: normalizedUserName,
       passwordHash,
       createdAt,
-      email,
+      email: normalizedEmail,
     });
 
     const JWS_SECRET = process.env.JWT_SECRET;
@@ -94,6 +96,101 @@ export class UserController {
       ...payload,
       authToken: jwt.sign(payload, JWS_SECRET, { expiresIn: '365d' }),
     };
+  }
+
+  @Post('forgot-password')
+  async forgotPassword(
+    @Body('usernameOrEmail') usernameOrEmail: string,
+    @Body('resetURL') resetURL: string,
+  ) {
+    validateNotEmpty(usernameOrEmail, 'usernameOrEmail');
+    const normalized = usernameOrEmail.toLowerCase().trim();
+    const db = await getDb();
+    const collection: Collection<User> = db.collection('user');
+    let existingUsers: WithId<User>[];
+    let toEmail: string;
+
+    const withUsername = await collection.findOne({
+      username: normalized,
+    });
+    if (withUsername) {
+      existingUsers = [withUsername];
+      toEmail = withUsername.email;
+    } else {
+      existingUsers = await collection
+        .find({
+          email: normalized,
+        })
+        .toArray();
+      toEmail = normalized;
+    }
+    if (!existingUsers.length) {
+      throw new HttpException(`User does not exist.`, HttpStatus.FORBIDDEN);
+    }
+    if (!toEmail) {
+      throw new HttpException(
+        `No user found with username or email '${normalized}'.`,
+        HttpStatus.FORBIDDEN,
+      );
+    }
+    const JWS_SECRET = process.env.JWT_SECRET;
+    const subject = 'Reset password';
+    const text =
+      `If you did not request a password reset, ignore this e-mail.\n\n` +
+      existingUsers
+        .map((user) => {
+          const resetCode = jwt.sign(
+            { userId: user._id.toString() },
+            JWS_SECRET,
+            {
+              expiresIn: '24h',
+            },
+          );
+          const resetLink = `${resetURL}/${resetCode}`;
+          return `Username: ${user.username}
+      Link to reset your password: ${resetLink}
+      Link expires in 24 hours.`;
+        })
+        .join('\n\n');
+    await sendEmail({ to: toEmail, subject, text });
+    return {
+      email: mungeEmail(toEmail),
+      message: `Reset password e-mail sent.`,
+    };
+  }
+
+  @Post('reset-password')
+  async resetPassword(
+    @Body('resetCode') resetCode: string,
+    @Body('password') password: string,
+  ) {
+    validateNotEmpty(resetCode, 'resetCode');
+    validateNotEmpty(password, 'password');
+    const JWS_SECRET = process.env.JWT_SECRET;
+    const { userId, exp } = jwt.verify(resetCode, JWS_SECRET) as {
+      userId: string;
+      exp: number;
+    };
+    const now = +new Date() / 1000;
+    if (now > exp) {
+      throw new HttpException(`Reset code expired.`, HttpStatus.FORBIDDEN);
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const db = await getDb();
+    const collection: Collection<User> = db.collection('user');
+    collection.updateOne(
+      {
+        _id: new ObjectId(userId),
+      },
+      {
+        $set: {
+          passwordHash,
+        },
+      },
+    );
+    return { message: 'Password reset.' };
   }
 
   @Post('data')
