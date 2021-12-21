@@ -60,6 +60,7 @@ export class UserController {
   async create(
     @Body('username') username: string,
     @Body('password') password: string,
+    @Body('email') email: string,
   ) {
     const normalizedUserName = username?.toLowerCase().trim();
     validateNotEmpty(normalizedUserName, 'username');
@@ -79,6 +80,7 @@ export class UserController {
       username: normalizedUserName,
       passwordHash,
       createdAt,
+      email,
     });
 
     const JWS_SECRET = process.env.JWT_SECRET;
