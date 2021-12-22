@@ -175,6 +175,25 @@ export class ContentController {
     return await this.contentService.getReportedContent();
   }
 
+  @Post('report/respond')
+  async respondToReport(
+    @Headers('authToken') authToken: string,
+    @Body('contentId') contentId: string,
+    @Body('shouldDelete') shouldDelete: boolean,
+  ) {
+    validateNotEmpty(authToken, 'authToken');
+    validateNotEmpty(contentId, 'contentId');
+    const user = await getUserFromAuthToken(authToken);
+    if (!user.isAdmin) {
+      throw new HttpException('Not authorized', HttpStatus.UNAUTHORIZED);
+    }
+    return await this.contentService.respondToFeedback(
+      contentId,
+      user,
+      shouldDelete,
+    );
+  }
+
   @Get('yt-subtitles')
   async getYoutubeSubtitles(@Query('id') youtubeId: string) {
     validateNotEmpty(youtubeId, 'id');

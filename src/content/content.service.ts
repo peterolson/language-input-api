@@ -309,6 +309,20 @@ export class ContentService {
     return (reactions * (sentiment + 1)) / bounceRate;
   }
 
+  async respondToFeedback(
+    contentId: string,
+    user: WithId<User>,
+    shouldDelete: boolean,
+  ) {
+    const db = await getDb();
+    const collection: Collection<ContentFeedback> =
+      db.collection('content.feedback');
+    await collection.deleteMany({ contentId });
+    if (shouldDelete) {
+      await this.deleteContent(contentId, user);
+    }
+  }
+
   async getYoutubeSubtitleData(youtubeId: string) {
     const ytResponse = await exec(
       `https://www.youtube.com/watch?v=${youtubeId}`,
