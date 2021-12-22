@@ -36,4 +36,4 @@ EMAIL_SES_FROM_ADDRESS=
 
 # Development
 
-- Run `npm run dev` to start the server.
+- Run `npm run start:dev` to start the server.
