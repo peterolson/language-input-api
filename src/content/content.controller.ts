@@ -165,6 +165,16 @@ export class ContentController {
     return await this.contentService.reportContent(id, title, reason);
   }
 
+  @Get('report')
+  async getReportedContent(@Headers('authToken') authToken: string) {
+    validateNotEmpty(authToken, 'authToken');
+    const user = await getUserFromAuthToken(authToken);
+    if (!user.isAdmin) {
+      throw new HttpException('Not authorized', HttpStatus.UNAUTHORIZED);
+    }
+    return await this.contentService.getReportedContent();
+  }
+
   @Get('yt-subtitles')
   async getYoutubeSubtitles(@Query('id') youtubeId: string) {
     validateNotEmpty(youtubeId, 'id');

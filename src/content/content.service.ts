@@ -286,6 +286,13 @@ export class ContentService {
     });
   }
 
+  async getReportedContent() {
+    const db = await getDb();
+    const collection: Collection<ContentFeedback> =
+      db.collection('content.feedback');
+    return await collection.find().toArray();
+  }
+
   async getPopularity(collection: Collection<ContentItem>, _id: ObjectId) {
     const item = await collection.findOne(
       { _id },
