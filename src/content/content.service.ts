@@ -98,6 +98,8 @@ export class ContentService {
         '$in' in query._id
       ) {
         delete query._id.$in;
+        const resultIds = results.map((x) => x._id);
+        query._id.$nin = query._id.$nin.concat(resultIds);
         const moreResults = await collection
           .find(query, options)
           .skip(dividedSkip)
