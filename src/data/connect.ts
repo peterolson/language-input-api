@@ -16,11 +16,16 @@ export async function getDb(): Promise<Db> {
 
 function ensureIndices(db: Db) {
   const content = db.collection('content');
-  content.createIndex({ lang: 1, publishedDate: -1 });
+  content.createIndex({ lang: 1, publishedDate: -1, duration: 1 });
   content.createIndex({ channel: 1, publishedDate: -1 });
   content.createIndex({ url: 1 });
-  content.createIndex({ lang: 1, difficulty: 1 });
+  content.createIndex({ lang: 1, difficulty: 1, duration: 1 });
   content.createIndex({ lang: 1, duration: 1 });
   content.createIndex({ lang: 1, tradDifficulty: 1 });
-  content.createIndex({ lang: 1, popularity: -1, publishedDate: -1 });
+  content.createIndex({
+    lang: 1,
+    popularity: -1,
+    publishedDate: -1,
+    duration: 1,
+  });
 }
